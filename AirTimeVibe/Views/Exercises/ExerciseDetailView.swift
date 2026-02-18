@@ -17,25 +17,28 @@ struct ExerciseDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Hero media
-                Group {
-                    if let imageURL = exercise.imageURL,
-                       let uiImage = UIImage(contentsOfFile: imageURL.path) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                    } else if let player {
-                        VideoPlayer(player: player)
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.system(size: 60))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, minHeight: 160)
-                    }
+                // Hero media — each branch has a concrete frame so VideoPlayer
+                // never collapses to 0×0 (Group with maxHeight alone won't prevent it).
+                if let imageURL = exercise.imageURL,
+                   let uiImage = UIImage(contentsOfFile: imageURL.path) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: 300)
+                        .background(Color(.systemGray5))
+                } else if let player {
+                    VideoPlayer(player: player)
+                        .frame(maxWidth: .infinity, height: 250)
+                        .background(Color(.systemGray5))
+                } else {
+                    Color(.systemGray5)
+                        .frame(maxWidth: .infinity, height: 160)
+                        .overlay {
+                            Image(systemName: "figure.strengthtraining.traditional")
+                                .font(.system(size: 60))
+                                .foregroundStyle(.secondary)
+                        }
                 }
-                .frame(maxWidth: .infinity, maxHeight: 300)
-                .background(Color(.systemGray5))
 
                 VStack(alignment: .leading, spacing: 24) {
                     // Name
