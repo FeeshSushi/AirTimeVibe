@@ -6,7 +6,7 @@ struct ExerciseEditorView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
-    var routine: Routine?   // set when adding a new exercise
+    var routine: Routine?   // set when adding a new exercise from a routine
     var exercise: Exercise? // set when editing an existing exercise
 
     @State private var name: String = ""
@@ -21,6 +21,9 @@ struct ExerciseEditorView: View {
     @State private var showingVideoPicker = false
     @State private var showingTrimmer = false
 
+    @State private var pickedImageURL: URL?
+    @State private var showingImagePicker = false
+
     private var isEditing: Bool { exercise != nil }
 
     var body: some View {
@@ -29,14 +32,29 @@ struct ExerciseEditorView: View {
                 TextField("Exercise name", text: $name)
             }
 
-            Section("Volume") {
-                Stepper("Sets: \(sets)", value: $sets, in: 1...20)
-                Stepper("Reps: \(reps)", value: $reps, in: 1...100)
-            }
+            Section("Image") {
+                if let imageURL = pickedImageURL ?? exercise?.imageURL,
+                   let uiImage = UIImage(contentsOfFile: imageURL.path) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 200)
+                        .cornerRadius(10)
+                        .listRowInsets(EdgeInsets())
 
-            Section("Notes") {
-                TextEditor(text: $notes)
-                    .frame(minHeight: 80)
+                    Button("Remove Image", role: .destructive) {
+                        pickedImageURL = nil
+                        if let ex = exercise {
+                            ex.imageFileName = nil
+                        }
+                    }
+                } else {
+                    Button {
+                        showingImagePicker = true
+                    } label: {
+                        Label("Add Image from Library", systemImage: "photo.badge.plus")
+                    }
+                }
             }
 
             Section("Video") {
@@ -67,6 +85,16 @@ struct ExerciseEditorView: View {
                     }
                 }
             }
+
+            Section("Notes") {
+                TextEditor(text: $notes)
+                    .frame(minHeight: 80)
+            }
+
+            Section("Volume") {
+                Stepper("Sets: \(sets)", value: $sets, in: 1...20)
+                Stepper("Reps: \(reps)", value: $reps, in: 1...100)
+            }
         }
         .navigationTitle(isEditing ? "Edit Exercise" : "New Exercise")
         .navigationBarTitleDisplayMode(.inline)
@@ -84,6 +112,9 @@ struct ExerciseEditorView: View {
         .onAppear(perform: loadExisting)
         .sheet(isPresented: $showingVideoPicker) {
             VideoPickerView(selectedURL: $pickedVideoURL)
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            ImagePickerView(selectedURL: $pickedImageURL)
         }
         .onChange(of: pickedVideoURL) { _, newURL in
             guard let url = newURL else { return }
@@ -115,11 +146,13 @@ struct ExerciseEditorView: View {
         if let url = ex.videoURL {
             previewPlayer = AVPlayer(url: url)
         }
+        pickedImageURL = ex.imageURL
     }
 
     private func save() {
         Task {
             let videoFileName = await resolveVideoFileName()
+            let imageFileName = await resolveImageFileName()
             await MainActor.run {
                 if let ex = exercise {
                     ex.name = name
@@ -131,19 +164,26 @@ struct ExerciseEditorView: View {
                     if let fileName = videoFileName {
                         ex.videoFileName = fileName
                     }
-                } else if let r = routine {
+                    if let fileName = imageFileName {
+                        ex.imageFileName = fileName
+                    }
+                } else {
                     let newExercise = Exercise(
                         name: name.trimmingCharacters(in: .whitespaces),
                         sets: sets,
                         reps: reps,
                         notes: notes,
-                        order: r.exercises.count
+                        order: routine?.exercises.count ?? 0
                     )
                     newExercise.videoFileName = videoFileName
                     newExercise.trimStart = trimStart
                     newExercise.trimEnd = trimEnd
+                    newExercise.imageFileName = imageFileName
                     context.insert(newExercise)
-                    r.exercises.append(newExercise)
+                    // Link to routine if created from within one; skip for standalone library exercises.
+                    if let r = routine {
+                        r.exercises.append(newExercise)
+                    }
                 }
                 dismiss()
             }
@@ -158,6 +198,19 @@ struct ExerciseEditorView: View {
             return url.lastPathComponent
         }
         let fileName = UUID().uuidString + ".mp4"
+        let destURL = docsDir.appendingPathComponent(fileName)
+        try? FileManager.default.copyItem(at: url, to: destURL)
+        return fileName
+    }
+
+    /// Copies the picked image to the Documents directory if needed and returns its filename.
+    private func resolveImageFileName() async -> String? {
+        guard let url = pickedImageURL else { return nil }
+        let docsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        if url.path.hasPrefix(docsDir.path) {
+            return url.lastPathComponent
+        }
+        let fileName = UUID().uuidString + ".jpg"
         let destURL = docsDir.appendingPathComponent(fileName)
         try? FileManager.default.copyItem(at: url, to: destURL)
         return fileName

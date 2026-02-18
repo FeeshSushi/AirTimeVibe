@@ -6,7 +6,8 @@ final class Routine {
     var name: String
     var createdAt: Date
 
-    @Relationship(deleteRule: .cascade, inverse: \Exercise.routine)
+    // Many-to-many: deleting a routine unlinks exercises but does not delete them.
+    @Relationship(deleteRule: .nullify, inverse: \Exercise.routines)
     var exercises: [Exercise] = []
 
     init(name: String) {

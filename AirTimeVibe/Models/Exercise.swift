@@ -11,7 +11,11 @@ final class Exercise {
     var trimStart: Double
     var trimEnd: Double
     var order: Int
-    var routine: Routine?
+    var imageFileName: String?
+
+    // Many-to-many: an exercise can belong to multiple routines.
+    // Routine owns the @Relationship annotation; SwiftData infers this side from the inverse: keypath.
+    var routines: [Routine] = []
 
     init(name: String, sets: Int = 3, reps: Int = 10, notes: String = "", order: Int = 0) {
         self.name = name
@@ -25,6 +29,14 @@ final class Exercise {
 
     var videoURL: URL? {
         guard let fileName = videoFileName else { return nil }
+        return FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask)
+            .first?
+            .appendingPathComponent(fileName)
+    }
+
+    var imageURL: URL? {
+        guard let fileName = imageFileName else { return nil }
         return FileManager.default
             .urls(for: .documentDirectory, in: .userDomainMask)
             .first?

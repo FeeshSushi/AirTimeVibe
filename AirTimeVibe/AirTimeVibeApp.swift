@@ -7,6 +7,6 @@ struct AirTimeVibeApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: [Routine.self, WorkoutSession.self])
+        .modelContainer(for: [Routine.self, Exercise.self, WorkoutSession.self])
     }
 }
