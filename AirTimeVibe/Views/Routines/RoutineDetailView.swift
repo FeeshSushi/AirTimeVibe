@@ -5,6 +5,8 @@ struct RoutineDetailView: View {
     @Environment(\.modelContext) private var context
     let routine: Routine
     @State private var showingAddExercise = false
+    @State private var showingAddOptions = false
+    @State private var showingExercisePicker = false
     @State private var showingWorkout = false
 
     var body: some View {
@@ -46,7 +48,7 @@ struct RoutineDetailView: View {
                 HStack {
                     EditButton()
                     Button {
-                        showingAddExercise = true
+                        showingAddOptions = true
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -68,20 +70,29 @@ struct RoutineDetailView: View {
                 .background(.bar)
             }
         }
+        .confirmationDialog("Add Exercise", isPresented: $showingAddOptions, titleVisibility: .visible) {
+            Button("Create New Exercise") { showingAddExercise = true }
+            Button("Add from Library")   { showingExercisePicker = true }
+        }
         .sheet(isPresented: $showingAddExercise) {
             NavigationStack {
                 ExerciseEditorView(routine: routine)
             }
+        }
+        .sheet(isPresented: $showingExercisePicker) {
+            ExerciseLibraryPickerView(routine: routine)
         }
         .fullScreenCover(isPresented: $showingWorkout) {
             ActiveWorkoutView(routine: routine)
         }
     }
 
+    // Unlinks the exercise from this routine only — does not delete it from the library.
     private func deleteExercises(at offsets: IndexSet) {
         let sorted = routine.sortedExercises
         for index in offsets {
-            context.delete(sorted[index])
+            let ex = sorted[index]
+            routine.exercises.removeAll { $0.id == ex.id }
         }
         reorder(routine.sortedExercises)
     }
