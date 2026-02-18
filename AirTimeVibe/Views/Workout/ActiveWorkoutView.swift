@@ -2,29 +2,18 @@ import SwiftUI
 import SwiftData
 import AVKit
 
-// MARK: - Draft types (in-memory, not persisted until session is saved)
-
-struct SetEntryDraft {
-    var weight: Double = 0
-    var reps: Int
-    var completed: Bool = false
-
-    init(targetReps: Int = 0) {
-        self.reps = targetReps
-    }
-}
+// MARK: - Draft type
 
 struct ExerciseLogDraft {
     var exerciseName: String
     var targetSets: Int
     var targetReps: Int
-    var sets: [SetEntryDraft]
+    var completedSets: Int = 0
 
     init(exercise: Exercise) {
         self.exerciseName = exercise.name
         self.targetSets = exercise.sets
         self.targetReps = exercise.reps
-        self.sets = Array(repeating: SetEntryDraft(targetReps: exercise.reps), count: exercise.sets)
     }
 }
 
@@ -35,156 +24,45 @@ struct ActiveWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     let routine: Routine
 
-    @State private var currentIndex = 0
+    @State private var currentIndex: Int? = 0
     @State private var drafts: [ExerciseLogDraft] = []
-    @State private var showFinishConfirm = false
+    @State private var showCancelConfirm = false
     @State private var finished = false
 
     private var sortedExercises: [Exercise] { routine.sortedExercises }
-    private var currentExercise: Exercise? {
-        guard currentIndex < sortedExercises.count else { return nil }
-        return sortedExercises[currentIndex]
-    }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Progress bar
-                ProgressView(value: Double(currentIndex + 1), total: Double(sortedExercises.count))
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-
-                Text("\(currentIndex + 1) / \(sortedExercises.count)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
-
-                if finished {
-                    finishedView
-                } else if let exercise = currentExercise, currentIndex < drafts.count {
-                    exerciseView(exercise: exercise, draftIndex: currentIndex)
-                }
-
-                // Navigation row
-                HStack {
-                    if currentIndex > 0 {
-                        Button("Previous") { currentIndex -= 1 }
-                            .buttonStyle(.bordered)
-                    }
-                    Spacer()
-                    if !finished {
-                        if currentIndex < sortedExercises.count - 1 {
-                            Button("Next") { currentIndex += 1 }
-                                .buttonStyle(.borderedProminent)
-                        } else {
-                            Button("Finish") { showFinishConfirm = true }
-                                .buttonStyle(.borderedProminent)
+        if finished {
+            FinishedView()
+        } else {
+            ScrollView(.vertical) {
+                LazyVStack(spacing: 0) {
+                    ForEach(sortedExercises.indices, id: \.self) { i in
+                        if i < drafts.count {
+                            ExerciseReelCell(
+                                exercise: sortedExercises[i],
+                                draft: $drafts[i],
+                                onCancel: { showCancelConfirm = true },
+                                onFinish: saveSession
+                            )
+                            .containerRelativeFrame([.horizontal, .vertical])
                         }
                     }
                 }
-                .padding()
+                .scrollTargetLayout()
             }
-            .navigationTitle(routine.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $currentIndex)
+            .ignoresSafeArea()
+            .confirmationDialog("End this workout?", isPresented: $showCancelConfirm, titleVisibility: .visible) {
+                Button("End Workout", role: .destructive) { dismiss() }
+                Button("Keep Going", role: .cancel) {}
             }
-            .confirmationDialog("Save this workout?", isPresented: $showFinishConfirm, titleVisibility: .visible) {
-                Button("Save & Finish") { saveSession() }
-                Button("Cancel", role: .cancel) {}
-            }
-        }
-        .onAppear {
-            drafts = sortedExercises.map { ExerciseLogDraft(exercise: $0) }
-        }
-    }
-
-    // MARK: - Exercise View
-
-    @ViewBuilder
-    private func exerciseView(exercise: Exercise, draftIndex: Int) -> some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Header
-                VStack(spacing: 4) {
-                    Text(exercise.name)
-                        .font(.title.bold())
-                    Text("Target: \(exercise.sets) sets × \(exercise.reps) reps")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top)
-
-                // Video
-                if let url = exercise.videoURL {
-                    VideoPlayer(player: AVPlayer(url: url))
-                        .frame(height: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .padding(.horizontal)
-                }
-
-                // Notes
-                if !exercise.notes.isEmpty {
-                    Text(exercise.notes)
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                // Sets
-                VStack(spacing: 10) {
-                    ForEach(0..<exercise.sets, id: \.self) { setIndex in
-                        SetRowView(
-                            setNumber: setIndex + 1,
-                            targetReps: exercise.reps,
-                            draft: draftBinding(draftIndex: draftIndex, setIndex: setIndex)
-                        )
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.bottom)
+            .onAppear {
+                drafts = sortedExercises.map { ExerciseLogDraft(exercise: $0) }
             }
         }
     }
-
-    // MARK: - Finished View
-
-    private var finishedView: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 80))
-                .foregroundStyle(.green)
-            Text("Workout Complete!")
-                .font(.largeTitle.bold())
-            Text("Great work today.")
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - Binding helper
-
-    private func draftBinding(draftIndex: Int, setIndex: Int) -> Binding<SetEntryDraft> {
-        Binding(
-            get: {
-                guard draftIndex < drafts.count, setIndex < drafts[draftIndex].sets.count else {
-                    return SetEntryDraft()
-                }
-                return drafts[draftIndex].sets[setIndex]
-            },
-            set: { newValue in
-                guard draftIndex < drafts.count, setIndex < drafts[draftIndex].sets.count else { return }
-                drafts[draftIndex].sets[setIndex] = newValue
-            }
-        )
-    }
-
-    // MARK: - Persistence
 
     private func saveSession() {
         let session = WorkoutSession(routine: routine)
@@ -196,7 +74,9 @@ struct ActiveWorkoutView: View {
                 targetSets: draft.targetSets,
                 targetReps: draft.targetReps
             )
-            log.completedSets = draft.sets.map { SetEntry(weight: $0.weight, reps: $0.reps) }
+            log.completedSets = (0..<draft.completedSets).map { _ in
+                SetEntry(weight: 0, reps: draft.targetReps)
+            }
             log.session = session
             context.insert(log)
         }
@@ -208,64 +88,197 @@ struct ActiveWorkoutView: View {
     }
 }
 
-// MARK: - SetRowView
+// MARK: - FinishedView
 
-struct SetRowView: View {
-    let setNumber: Int
-    let targetReps: Int
-    @Binding var draft: SetEntryDraft
-
+private struct FinishedView: View {
     var body: some View {
-        HStack(spacing: 10) {
-            Text("Set \(setNumber)")
-                .font(.subheadline.bold())
-                .frame(width: 54, alignment: .leading)
-
-            // Weight field
-            HStack(spacing: 4) {
-                Image(systemName: "scalemass")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-                TextField("0", value: $draft.weight, format: .number)
-                    .keyboardType(.decimalPad)
-                    .frame(width: 52)
-                Text("kg")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(8)
-            .background(Color(.systemGray6))
-            .cornerRadius(8)
-
-            // Reps field
-            HStack(spacing: 4) {
-                Image(systemName: "repeat")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-                TextField("\(targetReps)", value: $draft.reps, format: .number)
-                    .keyboardType(.numberPad)
-                    .frame(width: 40)
-                Text("reps")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(8)
-            .background(Color(.systemGray6))
-            .cornerRadius(8)
-
-            Spacer()
-
-            // Complete toggle
-            Button {
-                draft.completed.toggle()
-            } label: {
-                Image(systemName: draft.completed ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
-                    .foregroundStyle(draft.completed ? .green : .secondary)
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 16) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(.green)
+                Text("Workout Complete!")
+                    .font(.largeTitle.bold())
+                    .foregroundStyle(.white)
+                Text("Great work today.")
+                    .foregroundStyle(.white.opacity(0.7))
             }
         }
-        .padding()
-        .background(draft.completed ? Color.green.opacity(0.08) : Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+// MARK: - ExerciseReelCell
+
+private struct ExerciseReelCell: View {
+    let exercise: Exercise
+    @Binding var draft: ExerciseLogDraft
+    let onCancel: () -> Void
+    let onFinish: () -> Void
+
+    @State private var player: AVPlayer?
+    @State private var loopObserver: NSObjectProtocol?
+    @State private var videoGravity: AVLayerVideoGravity = .resizeAspectFill
+
+    init(exercise: Exercise, draft: Binding<ExerciseLogDraft>,
+         onCancel: @escaping () -> Void, onFinish: @escaping () -> Void) {
+        self.exercise = exercise
+        self._draft = draft
+        self.onCancel = onCancel
+        self.onFinish = onFinish
+        if let url = exercise.videoURL {
+            self._player = State(initialValue: AVPlayer(url: url))
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            // Layer 1: Full-screen media
+            if let player {
+                PlayerLayerView(player: player, gravity: videoGravity)
+                    .ignoresSafeArea()
+                    .onTapGesture { completeSet() }
+            } else if let imageURL = exercise.imageURL,
+                      let uiImage = UIImage(contentsOfFile: imageURL.path) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .ignoresSafeArea()
+                    .onTapGesture { completeSet() }
+            } else {
+                Color.black
+                    .ignoresSafeArea()
+                    .onTapGesture { completeSet() }
+            }
+
+            // Layer 2: Bottom gradient scrim
+            VStack {
+                Spacer()
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.75)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 300)
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+
+            // Layer 3: Floating controls
+            VStack(alignment: .leading) {
+                HStack {
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(10)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    Spacer()
+                    Button(action: onFinish) {
+                        Text("Finish")
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(.ultraThinMaterial, in: Capsule())
+                    }
+                }
+                .padding(.horizontal)
+
+                Spacer()
+
+                VStack(alignment: .center, spacing: 12) {
+                    Text(exercise.name)
+                        .font(.title2.bold())
+                        .foregroundStyle(.white)
+                    Text("\(exercise.reps) reps per set")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.85))
+                    if !exercise.notes.isEmpty {
+                        Text(exercise.notes)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.65))
+                            .lineLimit(2)
+                    }
+                    SetDotsView(total: draft.targetSets, completed: draft.completedSets)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal)
+                .padding(.bottom)
+            }
+        }
+        .onAppear {
+            player?.play()
+            guard let item = player?.currentItem else { return }
+            Task {
+                guard let track = try? await item.asset.loadTracks(withMediaType: .video).first,
+                      let size = try? await track.load(.naturalSize) else { return }
+                videoGravity = size.width > size.height ? .resizeAspect : .resizeAspectFill
+            }
+            loopObserver = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: item,
+                queue: .main
+            ) { _ in
+                player?.seek(to: .zero)
+                player?.play()
+            }
+        }
+        .onDisappear {
+            player?.pause()
+            if let obs = loopObserver {
+                NotificationCenter.default.removeObserver(obs)
+                loopObserver = nil
+            }
+        }
+    }
+
+    private func completeSet() {
+        guard draft.completedSets < draft.targetSets else { return }
+        draft.completedSets += 1
+    }
+}
+
+// MARK: - SetDotsView
+
+private struct SetDotsView: View {
+    let total: Int
+    let completed: Int
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<total, id: \.self) { i in
+                Circle()
+                    .fill(i < completed ? Color.white : Color.white.opacity(0.35))
+                    .frame(width: 10, height: 10)
+            }
+        }
+    }
+}
+
+// MARK: - PlayerLayerView
+
+private struct PlayerLayerView: UIViewRepresentable {
+    let player: AVPlayer
+    var gravity: AVLayerVideoGravity = .resizeAspectFill
+
+    final class PlayerView: UIView {
+        override class var layerClass: AnyClass { AVPlayerLayer.self }
+        var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+    }
+
+    func makeUIView(context: Context) -> PlayerView {
+        let view = PlayerView()
+        view.playerLayer.player = player
+        view.playerLayer.videoGravity = gravity
+        view.backgroundColor = .black
+        return view
+    }
+
+    func updateUIView(_ uiView: PlayerView, context: Context) {
+        uiView.playerLayer.player = player
+        uiView.playerLayer.videoGravity = gravity
     }
 }
