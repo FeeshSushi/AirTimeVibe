@@ -26,7 +26,7 @@ struct ExerciseDetailView: View {
                       let uiImage = UIImage(contentsOfFile: imageURL.path) {
                 Image(uiImage: uiImage)
                     .resizable()
-                    .scaledToFill()
+                    .scaledToFit()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
                     .ignoresSafeArea()
