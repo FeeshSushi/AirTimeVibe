@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# Xcode
+*.xcuserdata/
+*.xcscheme
+xcuserdata/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# CocoaPods (not used, but safe to include)
+Pods/
+
+# Claude local settings (user-specific)
+.claude/settings.local.json
