@@ -44,3 +44,9 @@ Videos are stored as `.mp4` files in the app's Documents directory. The `Exercis
 ## Required Info.plist Key
 
 `NSPhotoLibraryUsageDescription` must be present for video picking to work.
+
+## Git Workflow
+
+For every change requested, create a new branch before making edits. Branch naming:
+
+- **Features**: `FEATURE/(name)` — e.g. `FEATURE/add-rest-timer`
