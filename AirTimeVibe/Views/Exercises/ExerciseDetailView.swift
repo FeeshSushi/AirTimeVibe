@@ -27,12 +27,14 @@ struct ExerciseDetailView: View {
                         .frame(maxWidth: .infinity, maxHeight: 300)
                         .background(Color(.systemGray5))
                 } else if let player {
-                    VideoPlayer(player: player)
-                        .frame(maxWidth: .infinity, height: 250)
-                        .background(Color(.systemGray5))
+                    Color(.systemGray5)
+                        .frame(maxWidth: .infinity, maxHeight: 250)
+                        .overlay {
+                            VideoPlayer(player: player)
+                        }
                 } else {
                     Color(.systemGray5)
-                        .frame(maxWidth: .infinity, height: 160)
+                        .frame(maxWidth: .infinity, maxHeight: 160)
                         .overlay {
                             Image(systemName: "figure.strengthtraining.traditional")
                                 .font(.system(size: 60))
