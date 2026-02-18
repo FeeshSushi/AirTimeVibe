@@ -18,7 +18,7 @@ struct ExercisesView: View {
                 } else {
                     List {
                         ForEach(exercises) { exercise in
-                            NavigationLink(destination: ExerciseEditorView(exercise: exercise)) {
+                            NavigationLink(destination: ExerciseDetailView(exercise: exercise)) {
                                 ExerciseRowView(exercise: exercise)
                             }
                         }

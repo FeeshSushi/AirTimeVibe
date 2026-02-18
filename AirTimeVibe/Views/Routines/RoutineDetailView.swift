@@ -45,7 +45,7 @@ struct RoutineDetailView: View {
         .navigationTitle(routine.name)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                HStack {
+                HStack(spacing: 16) {
                     EditButton()
                     Button {
                         showingAddOptions = true

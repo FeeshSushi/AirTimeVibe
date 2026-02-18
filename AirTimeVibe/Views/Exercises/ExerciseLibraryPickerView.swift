@@ -7,6 +7,8 @@ struct ExerciseLibraryPickerView: View {
 
     let routine: Routine
 
+    @State private var selectedIDs: Set<PersistentIdentifier> = []
+
     // Exercises not yet linked to this routine
     private var availableExercises: [Exercise] {
         let existingIDs = Set(routine.exercises.map(\.id))
@@ -26,9 +28,9 @@ struct ExerciseLibraryPickerView: View {
                     List {
                         ForEach(availableExercises) { exercise in
                             Button {
-                                addToRoutine(exercise)
+                                toggleSelection(exercise)
                             } label: {
-                                PickerRowView(exercise: exercise)
+                                PickerRowView(exercise: exercise, isSelected: selectedIDs.contains(exercise.id))
                             }
                             .foregroundStyle(.primary)
                         }
@@ -41,13 +43,30 @@ struct ExerciseLibraryPickerView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add (\(selectedIDs.count))") {
+                        addSelected()
+                    }
+                    .disabled(selectedIDs.isEmpty)
+                }
             }
         }
     }
 
-    private func addToRoutine(_ exercise: Exercise) {
-        exercise.order = routine.exercises.count
-        routine.exercises.append(exercise)
+    private func toggleSelection(_ exercise: Exercise) {
+        if selectedIDs.contains(exercise.id) {
+            selectedIDs.remove(exercise.id)
+        } else {
+            selectedIDs.insert(exercise.id)
+        }
+    }
+
+    private func addSelected() {
+        let exercises = availableExercises.filter { selectedIDs.contains($0.id) }
+        for exercise in exercises {
+            exercise.order = routine.exercises.count
+            routine.exercises.append(exercise)
+        }
         dismiss()
     }
 }
@@ -56,6 +75,7 @@ struct ExerciseLibraryPickerView: View {
 
 private struct PickerRowView: View {
     let exercise: Exercise
+    let isSelected: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -86,8 +106,9 @@ private struct PickerRowView: View {
 
             Spacer()
 
-            Image(systemName: "plus.circle")
-                .foregroundStyle(.blue)
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isSelected ? .blue : Color(.systemGray3))
+                .font(.title3)
         }
         .padding(.vertical, 4)
     }

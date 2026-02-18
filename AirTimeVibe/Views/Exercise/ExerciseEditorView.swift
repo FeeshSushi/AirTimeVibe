@@ -32,14 +32,29 @@ struct ExerciseEditorView: View {
                 TextField("Exercise name", text: $name)
             }
 
-            Section("Volume") {
-                Stepper("Sets: \(sets)", value: $sets, in: 1...20)
-                Stepper("Reps: \(reps)", value: $reps, in: 1...100)
-            }
+            Section("Image") {
+                if let imageURL = pickedImageURL ?? exercise?.imageURL,
+                   let uiImage = UIImage(contentsOfFile: imageURL.path) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 200)
+                        .cornerRadius(10)
+                        .listRowInsets(EdgeInsets())
 
-            Section("Notes") {
-                TextEditor(text: $notes)
-                    .frame(minHeight: 80)
+                    Button("Remove Image", role: .destructive) {
+                        pickedImageURL = nil
+                        if let ex = exercise {
+                            ex.imageFileName = nil
+                        }
+                    }
+                } else {
+                    Button {
+                        showingImagePicker = true
+                    } label: {
+                        Label("Add Image from Library", systemImage: "photo.badge.plus")
+                    }
+                }
             }
 
             Section("Video") {
@@ -71,29 +86,14 @@ struct ExerciseEditorView: View {
                 }
             }
 
-            Section("Image") {
-                if let imageURL = pickedImageURL ?? exercise?.imageURL,
-                   let uiImage = UIImage(contentsOfFile: imageURL.path) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxHeight: 200)
-                        .cornerRadius(10)
-                        .listRowInsets(EdgeInsets())
+            Section("Notes") {
+                TextEditor(text: $notes)
+                    .frame(minHeight: 80)
+            }
 
-                    Button("Remove Image", role: .destructive) {
-                        pickedImageURL = nil
-                        if let ex = exercise {
-                            ex.imageFileName = nil
-                        }
-                    }
-                } else {
-                    Button {
-                        showingImagePicker = true
-                    } label: {
-                        Label("Add Image from Library", systemImage: "photo.badge.plus")
-                    }
-                }
+            Section("Volume") {
+                Stepper("Sets: \(sets)", value: $sets, in: 1...20)
+                Stepper("Reps: \(reps)", value: $reps, in: 1...100)
             }
         }
         .navigationTitle(isEditing ? "Edit Exercise" : "New Exercise")
