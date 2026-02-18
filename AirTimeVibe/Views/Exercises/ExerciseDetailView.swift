@@ -3,10 +3,11 @@ import AVKit
 
 struct ExerciseDetailView: View {
     let exercise: Exercise
+    @Environment(\.dismiss) private var dismiss
     @State private var showingEdit = false
     @State private var player: AVPlayer?
+    @State private var loopObserver: NSObjectProtocol?
 
-    // Initialize player before first render so VideoPlayer never sees a nil player.
     init(exercise: Exercise) {
         self.exercise = exercise
         if let url = exercise.videoURL {
@@ -15,68 +16,94 @@ struct ExerciseDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Hero media — each branch has a concrete frame so VideoPlayer
-                // never collapses to 0×0 (Group with maxHeight alone won't prevent it).
-                if let imageURL = exercise.imageURL,
-                   let uiImage = UIImage(contentsOfFile: imageURL.path) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity, maxHeight: 300)
-                        .background(Color(.systemGray5))
-                } else if let player {
-                    Color(.systemGray5)
-                        .frame(maxWidth: .infinity, maxHeight: 250)
-                        .overlay {
-                            VideoPlayer(player: player)
-                        }
-                } else {
-                    Color(.systemGray5)
-                        .frame(maxWidth: .infinity, maxHeight: 160)
-                        .overlay {
-                            Image(systemName: "figure.strengthtraining.traditional")
-                                .font(.system(size: 60))
-                                .foregroundStyle(.secondary)
-                        }
-                }
+        ZStack {
+            // Layer 1: Full-screen media
+            if let player {
+                PlayerLayerView(player: player)
+                    .ignoresSafeArea()
+                    .onTapGesture { togglePlayback() }
+            } else if let imageURL = exercise.imageURL,
+                      let uiImage = UIImage(contentsOfFile: imageURL.path) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .ignoresSafeArea()
+            } else {
+                Color.black
+                    .ignoresSafeArea()
+            }
 
-                VStack(alignment: .leading, spacing: 24) {
-                    // Name
+            // Layer 2: Bottom gradient scrim
+            VStack {
+                Spacer()
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.75)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 300)
+            }
+            .ignoresSafeArea()
+
+            // Layer 3: Floating controls (respects safe area)
+            VStack(alignment: .leading) {
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(10)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    Spacer()
+                    Button("Edit") { showingEdit = true }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: Capsule())
+                }
+                .padding(.horizontal)
+
+                Spacer()
+
+                VStack(alignment: .leading, spacing: 6) {
                     Text(exercise.name)
-                        .font(.largeTitle)
-                        .bold()
-
-                    // Notes (hidden if empty)
+                        .font(.title2.bold())
+                        .foregroundStyle(.white)
+                    Text("\(exercise.sets) sets × \(exercise.reps) reps")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.85))
                     if !exercise.notes.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Notes")
-                                .font(.caption)
-                                .textCase(.uppercase)
-                                .foregroundStyle(.secondary)
-                            Text(exercise.notes)
-                                .font(.body)
-                        }
-                    }
-
-                    // Volume
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Volume")
-                            .font(.caption)
-                            .textCase(.uppercase)
-                            .foregroundStyle(.secondary)
-                        Text("\(exercise.sets) sets × \(exercise.reps) reps")
-                            .font(.body)
+                        Text(exercise.notes)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
+                            .lineLimit(3)
                     }
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.bottom)
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Edit") { showingEdit = true }
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            player?.play()
+            guard let item = player?.currentItem else { return }
+            loopObserver = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: item,
+                queue: .main
+            ) { _ in
+                player?.seek(to: .zero)
+                player?.play()
+            }
+        }
+        .onDisappear {
+            player?.pause()
+            if let obs = loopObserver {
+                NotificationCenter.default.removeObserver(obs)
+                loopObserver = nil
             }
         }
         .sheet(isPresented: $showingEdit) {
@@ -84,5 +111,37 @@ struct ExerciseDetailView: View {
                 ExerciseEditorView(exercise: exercise)
             }
         }
+    }
+
+    private func togglePlayback() {
+        guard let player else { return }
+        if player.timeControlStatus == .playing {
+            player.pause()
+        } else {
+            player.play()
+        }
+    }
+}
+
+// MARK: - PlayerLayerView
+
+private struct PlayerLayerView: UIViewRepresentable {
+    let player: AVPlayer
+
+    final class PlayerView: UIView {
+        override class var layerClass: AnyClass { AVPlayerLayer.self }
+        var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+    }
+
+    func makeUIView(context: Context) -> PlayerView {
+        let view = PlayerView()
+        view.playerLayer.player = player
+        view.playerLayer.videoGravity = .resizeAspectFill
+        view.backgroundColor = .black
+        return view
+    }
+
+    func updateUIView(_ uiView: PlayerView, context: Context) {
+        uiView.playerLayer.player = player
     }
 }
