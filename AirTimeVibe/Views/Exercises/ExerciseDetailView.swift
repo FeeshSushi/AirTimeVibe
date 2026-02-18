@@ -4,28 +4,29 @@ import AVKit
 struct ExerciseDetailView: View {
     let exercise: Exercise
     @State private var showingEdit = false
+    @State private var player: AVPlayer?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Hero image
+                // Hero media
                 Group {
                     if let imageURL = exercise.imageURL,
                        let uiImage = UIImage(contentsOfFile: imageURL.path) {
                         Image(uiImage: uiImage)
                             .resizable()
-                            .scaledToFill()
+                            .scaledToFit()
+                    } else if exercise.videoURL != nil {
+                        VideoPlayer(player: player)
                     } else {
                         Image(systemName: "figure.strengthtraining.traditional")
                             .font(.system(size: 60))
                             .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, minHeight: 160)
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 260)
+                .frame(maxWidth: .infinity, maxHeight: 300)
                 .background(Color(.systemGray5))
-                .clipped()
 
                 VStack(alignment: .leading, spacing: 24) {
                     // Name
@@ -62,6 +63,11 @@ struct ExerciseDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Edit") { showingEdit = true }
+            }
+        }
+        .onAppear {
+            if let url = exercise.videoURL {
+                player = AVPlayer(url: url)
             }
         }
         .sheet(isPresented: $showingEdit) {
