@@ -6,6 +6,14 @@ struct ExerciseDetailView: View {
     @State private var showingEdit = false
     @State private var player: AVPlayer?
 
+    // Initialize player before first render so VideoPlayer never sees a nil player.
+    init(exercise: Exercise) {
+        self.exercise = exercise
+        if let url = exercise.videoURL {
+            self._player = State(initialValue: AVPlayer(url: url))
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -16,8 +24,9 @@ struct ExerciseDetailView: View {
                         Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFit()
-                    } else if exercise.videoURL != nil {
+                    } else if let player {
                         VideoPlayer(player: player)
+                            .frame(maxWidth: .infinity)
                     } else {
                         Image(systemName: "figure.strengthtraining.traditional")
                             .font(.system(size: 60))
@@ -63,11 +72,6 @@ struct ExerciseDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Edit") { showingEdit = true }
-            }
-        }
-        .onAppear {
-            if let url = exercise.videoURL {
-                player = AVPlayer(url: url)
             }
         }
         .sheet(isPresented: $showingEdit) {
