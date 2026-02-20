@@ -24,6 +24,9 @@ struct ExerciseEditorView: View {
     @State private var pickedImageURL: URL?
     @State private var showingImagePicker = false
 
+    @State private var category: ExerciseCategory? = nil
+    @State private var primaryMuscleGroup: MuscleGroup? = nil
+
     private var isEditing: Bool { exercise != nil }
 
     var body: some View {
@@ -91,6 +94,21 @@ struct ExerciseEditorView: View {
                     .frame(minHeight: 80)
             }
 
+            Section("Classification") {
+                Picker("Category", selection: $category) {
+                    Text("None").tag(ExerciseCategory?.none)
+                    ForEach(ExerciseCategory.allCases) { cat in
+                        Label(cat.rawValue, systemImage: cat.systemImage).tag(Optional(cat))
+                    }
+                }
+                Picker("Muscle Group", selection: $primaryMuscleGroup) {
+                    Text("None").tag(MuscleGroup?.none)
+                    ForEach(MuscleGroup.allCases) { group in
+                        Text(group.rawValue).tag(Optional(group))
+                    }
+                }
+            }
+
             Section("Volume") {
                 Stepper("Sets: \(sets)", value: $sets, in: 1...20)
                 Stepper("Reps: \(reps)", value: $reps, in: 1...100)
@@ -143,6 +161,8 @@ struct ExerciseEditorView: View {
         notes = ex.notes
         trimStart = ex.trimStart
         trimEnd = ex.trimEnd
+        category = ex.category
+        primaryMuscleGroup = ex.primaryMuscleGroup
         if let url = ex.videoURL {
             previewPlayer = AVPlayer(url: url)
         }
@@ -161,6 +181,8 @@ struct ExerciseEditorView: View {
                     ex.notes = notes
                     ex.trimStart = trimStart
                     ex.trimEnd = trimEnd
+                    ex.category = category
+                    ex.primaryMuscleGroup = primaryMuscleGroup
                     if let fileName = videoFileName {
                         ex.videoFileName = fileName
                     }
@@ -179,6 +201,8 @@ struct ExerciseEditorView: View {
                     newExercise.trimStart = trimStart
                     newExercise.trimEnd = trimEnd
                     newExercise.imageFileName = imageFileName
+                    newExercise.category = category
+                    newExercise.primaryMuscleGroup = primaryMuscleGroup
                     context.insert(newExercise)
                     // Link to routine if created from within one; skip for standalone library exercises.
                     if let r = routine {

@@ -76,6 +76,26 @@ struct ExerciseDetailView: View {
                     Text("\(exercise.sets) sets × \(exercise.reps) reps")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.85))
+                    if exercise.category != nil || exercise.primaryMuscleGroup != nil {
+                        HStack(spacing: 8) {
+                            if let cat = exercise.category {
+                                Label(cat.rawValue, systemImage: cat.systemImage)
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(.white.opacity(0.2), in: Capsule())
+                            }
+                            if let group = exercise.primaryMuscleGroup {
+                                Label(group.rawValue, systemImage: "figure.arms.open")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(.white.opacity(0.2), in: Capsule())
+                            }
+                        }
+                    }
                     if !exercise.notes.isEmpty {
                         Text(exercise.notes)
                             .font(.subheadline)

@@ -12,6 +12,8 @@ final class Exercise {
     var trimEnd: Double
     var order: Int
     var imageFileName: String?
+    var category: ExerciseCategory?
+    var primaryMuscleGroup: MuscleGroup?
 
     // Many-to-many: an exercise can belong to multiple routines.
     // Routine owns the @Relationship annotation; SwiftData infers this side from the inverse: keypath.
