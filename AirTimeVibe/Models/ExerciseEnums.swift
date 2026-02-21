@@ -29,6 +29,7 @@ enum MuscleGroup: String, Codable, CaseIterable, Identifiable {
     case glutes     = "Glutes"
     case calves     = "Calves"
     case hipFlexors = "Hip Flexors"
+    case ankles = "Ankles"
     case fullBody   = "Full Body"
 
     var id: String { rawValue }
