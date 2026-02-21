@@ -107,6 +107,7 @@ struct ExerciseDetailView: View {
                 .padding(.bottom)
             }
         }
+        .background(SwipeBackEnabler())
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             player?.play()
@@ -145,6 +146,18 @@ struct ExerciseDetailView: View {
             player.pause()
         } else {
             player.play()
+        }
+    }
+}
+
+// MARK: - SwipeBackEnabler
+
+private struct SwipeBackEnabler: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController { UIViewController() }
+    func updateUIViewController(_ vc: UIViewController, context: Context) {
+        DispatchQueue.main.async {
+            vc.navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+            vc.navigationController?.interactivePopGestureRecognizer?.delegate = nil
         }
     }
 }

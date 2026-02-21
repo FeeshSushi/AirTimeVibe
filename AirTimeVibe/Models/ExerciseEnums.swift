@@ -25,11 +25,12 @@ enum MuscleGroup: String, Codable, CaseIterable, Identifiable {
     case forearms   = "Forearms"
     case core       = "Core"
     case quads      = "Quads"
+    case knees      = "Knees"
     case hamstrings = "Hamstrings"
     case glutes     = "Glutes"
     case calves     = "Calves"
     case hipFlexors = "Hip Flexors"
-    case ankles = "Ankles"
+    case ankles     = "Ankles"
     case fullBody   = "Full Body"
 
     var id: String { rawValue }
