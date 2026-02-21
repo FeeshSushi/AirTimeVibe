@@ -7,7 +7,6 @@ struct ExerciseDetailView: View {
     @State private var showingEdit = false
     @State private var player: AVPlayer?
     @State private var loopObserver: NSObjectProtocol?
-    @State private var videoGravity: AVLayerVideoGravity = .resizeAspectFill
 
     init(exercise: Exercise) {
         self.exercise = exercise
@@ -20,7 +19,7 @@ struct ExerciseDetailView: View {
         ZStack {
             // Layer 1: Full-screen media
             if let player {
-                PlayerLayerView(player: player, gravity: videoGravity)
+                PlayerLayerView(player: player)
                     .ignoresSafeArea()
                     .onTapGesture { togglePlayback() }
             } else if let imageURL = exercise.imageURL,
@@ -112,11 +111,6 @@ struct ExerciseDetailView: View {
         .onAppear {
             player?.play()
             guard let item = player?.currentItem else { return }
-            Task {
-                guard let track = try? await item.asset.loadTracks(withMediaType: .video).first,
-                      let size = try? await track.load(.naturalSize) else { return }
-                videoGravity = size.width > size.height ? .resizeAspect : .resizeAspectFill
-            }
             loopObserver = NotificationCenter.default.addObserver(
                 forName: .AVPlayerItemDidPlayToEndTime,
                 object: item,

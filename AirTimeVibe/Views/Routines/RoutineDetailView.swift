@@ -19,19 +19,26 @@ struct RoutineDetailView: View {
                 )
             } else {
                 List {
-                    ForEach(routine.sortedExercises) { exercise in
-                        NavigationLink(destination: ExerciseEditorView(exercise: exercise)) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(exercise.name)
-                                    .font(.headline)
-                                Text("\(exercise.sets) sets × \(exercise.reps) reps")
-                                    .font(.caption)
+                    ForEach(Array(routine.sortedExercises.enumerated()), id: \.element.id) { index, exercise in
+                        NavigationLink(destination: ExerciseDetailView(exercise: exercise)) {
+                            HStack(spacing: 12) {
+                                Text("\(index + 1)")
+                                    .font(.caption.weight(.semibold))
                                     .foregroundStyle(.secondary)
-                                if !exercise.notes.isEmpty {
-                                    Text(exercise.notes)
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                        .lineLimit(1)
+                                    .frame(width: 24, alignment: .center)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(exercise.name)
+                                        .font(.headline)
+                                    Text("\(exercise.sets) sets × \(exercise.reps) reps")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    if !exercise.notes.isEmpty {
+                                        Text(exercise.notes)
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                            .lineLimit(1)
+                                    }
                                 }
                             }
                             .padding(.vertical, 4)

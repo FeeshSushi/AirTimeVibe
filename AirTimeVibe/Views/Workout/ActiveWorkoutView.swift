@@ -118,7 +118,8 @@ private struct ExerciseReelCell: View {
 
     @State private var player: AVPlayer?
     @State private var loopObserver: NSObjectProtocol?
-    @State private var videoGravity: AVLayerVideoGravity = .resizeAspectFill
+    @State private var safeTop: CGFloat = 0
+    @State private var safeBottom: CGFloat = 0
 
     init(exercise: Exercise, draft: Binding<ExerciseLogDraft>,
          onCancel: @escaping () -> Void, onFinish: @escaping () -> Void) {
@@ -135,7 +136,7 @@ private struct ExerciseReelCell: View {
         ZStack {
             // Layer 1: Full-screen media
             if let player {
-                PlayerLayerView(player: player, gravity: videoGravity)
+                PlayerLayerView(player: player)
                     .ignoresSafeArea()
                     .onTapGesture { completeSet() }
             } else if let imageURL = exercise.imageURL,
@@ -186,6 +187,7 @@ private struct ExerciseReelCell: View {
                     }
                 }
                 .padding(.horizontal)
+                .padding(.top, safeTop + 8)
 
                 Spacer()
 
@@ -206,18 +208,17 @@ private struct ExerciseReelCell: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal)
-                .padding(.bottom)
+                .padding(.bottom, safeBottom + 8)
             }
-            .safeAreaPadding()
         }
         .onAppear {
+            if let w = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene }).first?.keyWindow {
+                safeTop = w.safeAreaInsets.top
+                safeBottom = w.safeAreaInsets.bottom
+            }
             player?.play()
             guard let item = player?.currentItem else { return }
-            Task {
-                guard let track = try? await item.asset.loadTracks(withMediaType: .video).first,
-                      let size = try? await track.load(.naturalSize) else { return }
-                videoGravity = size.width > size.height ? .resizeAspect : .resizeAspectFill
-            }
             loopObserver = NotificationCenter.default.addObserver(
                 forName: .AVPlayerItemDidPlayToEndTime,
                 object: item,
