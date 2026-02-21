@@ -122,8 +122,10 @@ struct ExerciseDetailView: View {
             }
             Task {
                 guard let track = try? await item.asset.loadTracks(withMediaType: .video).first,
-                      let size = try? await track.load(.naturalSize) else { return }
-                videoGravity = size.width > size.height ? .resizeAspect : .resizeAspectFill
+                      let naturalSize = try? await track.load(.naturalSize),
+                      let transform = try? await track.load(.preferredTransform) else { return }
+                let displaySize = naturalSize.applying(transform)
+                videoGravity = abs(displaySize.width) > abs(displaySize.height) ? .resizeAspect : .resizeAspectFill
             }
         }
         .onDisappear {
