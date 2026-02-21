@@ -129,7 +129,6 @@ struct ExerciseLibraryPickerView: View {
         let exercises = filteredAvailableExercises.filter { selectedIDs.contains($0.id) }
         for exercise in exercises {
             routine.exercises.append(exercise)
-            routine.exerciseOrder.append(exercise.uuid)
         }
         dismiss()
     }

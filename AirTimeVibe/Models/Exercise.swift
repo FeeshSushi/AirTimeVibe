@@ -11,7 +11,6 @@ final class Exercise {
     var trimStart: Double
     var trimEnd: Double
     var order: Int
-    var uuid: UUID = UUID()
     var imageFileName: String?
     var category: ExerciseCategory?
     var primaryMuscleGroup: MuscleGroup?

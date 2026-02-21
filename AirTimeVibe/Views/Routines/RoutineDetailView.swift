@@ -96,21 +96,10 @@ struct RoutineDetailView: View {
 
     // Unlinks the exercise from this routine only — does not delete it from the library.
     private func deleteExercises(at offsets: IndexSet) {
-        let sorted = routine.sortedExercises
-        for index in offsets {
-            let ex = sorted[index]
-            routine.exercises.removeAll { $0.id == ex.id }
-        }
-        reorder(routine.sortedExercises)
+        routine.exercises.remove(atOffsets: offsets)
     }
 
     private func moveExercises(from source: IndexSet, to destination: Int) {
-        var sorted = routine.sortedExercises
-        sorted.move(fromOffsets: source, toOffset: destination)
-        reorder(sorted)
-    }
-
-    private func reorder(_ exercises: [Exercise]) {
-        routine.exerciseOrder = exercises.map(\.uuid)
+        routine.exercises.move(fromOffsets: source, toOffset: destination)
     }
 }
