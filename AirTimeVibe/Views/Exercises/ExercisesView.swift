@@ -5,6 +5,9 @@ struct ExercisesView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @State private var showingAddExercise = false
+    @State private var showingVideoPicker = false
+    @State private var showingExtractor = false
+    @State private var extractorVideoURL: URL? = nil
     @State private var filterCategory: ExerciseCategory? = nil
     @State private var filterMuscleGroup: MuscleGroup? = nil
 
@@ -52,8 +55,17 @@ struct ExercisesView: View {
             .navigationTitle("Exercises")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingAddExercise = true
+                    Menu {
+                        Button {
+                            showingAddExercise = true
+                        } label: {
+                            Label("New Exercise", systemImage: "plus")
+                        }
+                        Button {
+                            showingVideoPicker = true
+                        } label: {
+                            Label("Extract from Video", systemImage: "film.stack")
+                        }
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -65,6 +77,17 @@ struct ExercisesView: View {
             .sheet(isPresented: $showingAddExercise) {
                 NavigationStack {
                     ExerciseEditorView(routine: nil)
+                }
+            }
+            .sheet(isPresented: $showingVideoPicker) {
+                VideoPickerView(selectedURL: $extractorVideoURL)
+            }
+            .onChange(of: extractorVideoURL) { _, url in
+                if url != nil { showingExtractor = true }
+            }
+            .sheet(isPresented: $showingExtractor, onDismiss: { extractorVideoURL = nil }) {
+                if let url = extractorVideoURL {
+                    VideoClipExtractorView(videoURL: url)
                 }
             }
         }
