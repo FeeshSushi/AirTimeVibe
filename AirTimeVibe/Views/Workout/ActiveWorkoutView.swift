@@ -28,39 +28,74 @@ struct ActiveWorkoutView: View {
     @State private var drafts: [ExerciseLogDraft] = []
     @State private var showCancelConfirm = false
     @State private var finished = false
+    @State private var safeBottom: CGFloat = 0
 
     private var sortedExercises: [Exercise] { routine.sortedExercises }
+
+    private var allSetsComplete: Bool {
+        !drafts.isEmpty && drafts.allSatisfy { $0.completedSets >= $0.targetSets }
+    }
 
     var body: some View {
         if finished {
             FinishedView()
         } else {
-            ScrollView(.vertical) {
-                LazyVStack(spacing: 0) {
-                    ForEach(sortedExercises.indices, id: \.self) { i in
-                        if i < drafts.count {
-                            ExerciseReelCell(
-                                exercise: sortedExercises[i],
-                                draft: $drafts[i],
-                                onCancel: { showCancelConfirm = true },
-                                onFinish: saveSession
-                            )
-                            .containerRelativeFrame([.horizontal, .vertical])
+            ZStack(alignment: .bottom) {
+                ScrollView(.vertical) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(sortedExercises.indices, id: \.self) { i in
+                            if i < drafts.count {
+                                ExerciseReelCell(
+                                    exercise: sortedExercises[i],
+                                    draft: $drafts[i],
+                                    onCancel: { showCancelConfirm = true },
+                                    onAdvance: { if i + 1 < sortedExercises.count { currentIndex = i + 1 } },
+                                    onFinish: saveSession
+                                )
+                                .containerRelativeFrame([.horizontal, .vertical])
+                            }
                         }
                     }
+                    .scrollTargetLayout()
                 }
-                .scrollTargetLayout()
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: $currentIndex)
+                .ignoresSafeArea()
+                .confirmationDialog("End this workout?", isPresented: $showCancelConfirm, titleVisibility: .visible) {
+                    Button("End Workout", role: .destructive) { dismiss() }
+                    Button("Keep Going", role: .cancel) {}
+                }
+                .onAppear {
+                    drafts = sortedExercises.map { ExerciseLogDraft(exercise: $0) }
+                    if let w = UIApplication.shared.connectedScenes
+                        .compactMap({ $0 as? UIWindowScene }).first?.keyWindow {
+                        safeBottom = w.safeAreaInsets.bottom
+                    }
+                }
+
+                if allSetsComplete {
+                    HStack(spacing: 16) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.title2)
+                        Text("All sets complete!")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Button("Save", action: saveSession)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(.green, in: Capsule())
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 14)
+                    .background(.ultraThinMaterial)
+                    .padding(.bottom, safeBottom)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
-            .scrollTargetBehavior(.paging)
-            .scrollPosition(id: $currentIndex)
-            .ignoresSafeArea()
-            .confirmationDialog("End this workout?", isPresented: $showCancelConfirm, titleVisibility: .visible) {
-                Button("End Workout", role: .destructive) { dismiss() }
-                Button("Keep Going", role: .cancel) {}
-            }
-            .onAppear {
-                drafts = sortedExercises.map { ExerciseLogDraft(exercise: $0) }
-            }
+            .animation(.spring(duration: 0.4), value: allSetsComplete)
         }
     }
 
@@ -114,6 +149,7 @@ private struct ExerciseReelCell: View {
     let exercise: Exercise
     @Binding var draft: ExerciseLogDraft
     let onCancel: () -> Void
+    let onAdvance: () -> Void
     let onFinish: () -> Void
 
     @State private var player: AVPlayer?
@@ -123,10 +159,11 @@ private struct ExerciseReelCell: View {
     @State private var safeBottom: CGFloat = 0
 
     init(exercise: Exercise, draft: Binding<ExerciseLogDraft>,
-         onCancel: @escaping () -> Void, onFinish: @escaping () -> Void) {
+         onCancel: @escaping () -> Void, onAdvance: @escaping () -> Void, onFinish: @escaping () -> Void) {
         self.exercise = exercise
         self._draft = draft
         self.onCancel = onCancel
+        self.onAdvance = onAdvance
         self.onFinish = onFinish
         if let url = exercise.videoURL {
             self._player = State(initialValue: AVPlayer(url: url))
@@ -246,8 +283,11 @@ private struct ExerciseReelCell: View {
     }
 
     private func completeSet() {
-        guard draft.completedSets < draft.targetSets else { return }
-        draft.completedSets += 1
+        if draft.completedSets < draft.targetSets {
+            draft.completedSets += 1
+        } else {
+            onAdvance()
+        }
     }
 }
 

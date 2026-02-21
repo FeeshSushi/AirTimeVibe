@@ -8,6 +8,7 @@ struct ExerciseDetailView: View {
     @State private var player: AVPlayer?
     @State private var loopObserver: NSObjectProtocol?
     @State private var videoGravity: AVLayerVideoGravity = .resizeAspectFill
+    @State private var isPaused = false
 
     init(exercise: Exercise) {
         self.exercise = exercise
@@ -36,7 +37,17 @@ struct ExerciseDetailView: View {
                     .ignoresSafeArea()
             }
 
-            // Layer 2: Bottom gradient scrim
+            // Layer 2: Pause indicator
+            if isPaused {
+                Image(systemName: "pause.fill")
+                    .font(.system(size: 52))
+                    .foregroundStyle(.white)
+                    .padding(24)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .transition(.opacity)
+            }
+
+            // Layer 3: Bottom gradient scrim
             VStack {
                 Spacer()
                 LinearGradient(
@@ -107,6 +118,7 @@ struct ExerciseDetailView: View {
                 .padding(.bottom)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: isPaused)
         .background(SwipeBackEnabler())
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
@@ -146,8 +158,10 @@ struct ExerciseDetailView: View {
         guard let player else { return }
         if player.timeControlStatus == .playing {
             player.pause()
+            isPaused = true
         } else {
             player.play()
+            isPaused = false
         }
     }
 }
