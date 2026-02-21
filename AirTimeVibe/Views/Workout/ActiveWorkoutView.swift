@@ -208,6 +208,7 @@ private struct ExerciseReelCell: View {
                 .padding(.horizontal)
                 .padding(.bottom)
             }
+            .safeAreaPadding()
         }
         .onAppear {
             player?.play()
@@ -248,11 +249,21 @@ private struct SetDotsView: View {
     let completed: Int
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             ForEach(0..<total, id: \.self) { i in
-                Circle()
-                    .fill(i < completed ? Color.white : Color.white.opacity(0.35))
-                    .frame(width: 10, height: 10)
+                ZStack {
+                    if i < completed {
+                        Circle()
+                            .fill(Color.green)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Circle()
+                            .stroke(Color.white.opacity(0.5), lineWidth: 2)
+                    }
+                }
+                .frame(width: 28, height: 28)
             }
         }
     }
