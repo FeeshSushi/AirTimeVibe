@@ -63,7 +63,7 @@ struct RoutineDetailView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            if !routine.exercises.isEmpty {
+            if !routine.sortedExercises.isEmpty {
                 Button {
                     showingWorkout = true
                 } label: {
@@ -111,8 +111,6 @@ struct RoutineDetailView: View {
     }
 
     private func reorder(_ exercises: [Exercise]) {
-        for (i, exercise) in exercises.enumerated() {
-            exercise.order = i
-        }
+        routine.exerciseOrder = exercises.map(\.uuid)
     }
 }

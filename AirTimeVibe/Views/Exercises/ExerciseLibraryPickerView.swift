@@ -8,17 +8,26 @@ struct ExerciseLibraryPickerView: View {
     let routine: Routine
 
     @State private var selectedIDs: Set<PersistentIdentifier> = []
+    @State private var filterCategory: ExerciseCategory? = nil
+    @State private var filterMuscleGroup: MuscleGroup? = nil
 
     // Exercises not yet linked to this routine
-    private var availableExercises: [Exercise] {
+    private var allAvailableExercises: [Exercise] {
         let existingIDs = Set(routine.exercises.map(\.id))
         return allExercises.filter { !existingIDs.contains($0.id) }
+    }
+
+    private var filteredAvailableExercises: [Exercise] {
+        allAvailableExercises.filter { ex in
+            (filterCategory == nil || ex.category == filterCategory) &&
+            (filterMuscleGroup == nil || ex.primaryMuscleGroup == filterMuscleGroup)
+        }
     }
 
     var body: some View {
         NavigationStack {
             Group {
-                if availableExercises.isEmpty {
+                if allAvailableExercises.isEmpty {
                     ContentUnavailableView(
                         "No Exercises to Add",
                         systemImage: "checkmark.circle",
@@ -26,13 +35,27 @@ struct ExerciseLibraryPickerView: View {
                     )
                 } else {
                     List {
-                        ForEach(availableExercises) { exercise in
-                            Button {
-                                toggleSelection(exercise)
-                            } label: {
-                                PickerRowView(exercise: exercise, isSelected: selectedIDs.contains(exercise.id))
+                        filterBar
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+
+                        if filteredAvailableExercises.isEmpty {
+                            ContentUnavailableView(
+                                "No Matches",
+                                systemImage: "line.3.horizontal.decrease.circle",
+                                description: Text("No exercises match the selected filters.")
+                            )
+                            .listRowSeparator(.hidden)
+                        } else {
+                            ForEach(filteredAvailableExercises) { exercise in
+                                Button {
+                                    toggleSelection(exercise)
+                                } label: {
+                                    PickerRowView(exercise: exercise, isSelected: selectedIDs.contains(exercise.id))
+                                }
+                                .foregroundStyle(.primary)
                             }
-                            .foregroundStyle(.primary)
                         }
                     }
                 }
@@ -53,6 +76,47 @@ struct ExerciseLibraryPickerView: View {
         }
     }
 
+    // MARK: - Filter Bar
+
+    private var filterBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    FilterChip(label: "All", isSelected: filterCategory == nil) {
+                        filterCategory = nil
+                    }
+                    ForEach(ExerciseCategory.allCases) { cat in
+                        FilterChip(
+                            label: cat.rawValue,
+                            systemImage: cat.systemImage,
+                            isSelected: filterCategory == cat
+                        ) {
+                            filterCategory = filterCategory == cat ? nil : cat
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    FilterChip(label: "Any Muscle", isSelected: filterMuscleGroup == nil) {
+                        filterMuscleGroup = nil
+                    }
+                    ForEach(MuscleGroup.allCases) { group in
+                        FilterChip(label: group.rawValue, isSelected: filterMuscleGroup == group) {
+                            filterMuscleGroup = filterMuscleGroup == group ? nil : group
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
     private func toggleSelection(_ exercise: Exercise) {
         if selectedIDs.contains(exercise.id) {
             selectedIDs.remove(exercise.id)
@@ -62,10 +126,10 @@ struct ExerciseLibraryPickerView: View {
     }
 
     private func addSelected() {
-        let exercises = availableExercises.filter { selectedIDs.contains($0.id) }
+        let exercises = filteredAvailableExercises.filter { selectedIDs.contains($0.id) }
         for exercise in exercises {
-            exercise.order = routine.exercises.count
             routine.exercises.append(exercise)
+            routine.exerciseOrder.append(exercise.uuid)
         }
         dismiss()
     }

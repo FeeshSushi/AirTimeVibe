@@ -324,14 +324,4 @@ struct VideoClipExtractorView: View {
             }
         }
     }
-
-    // MARK: - Helpers
-
-    private func formatTime(_ seconds: Double) -> String {
-        guard seconds.isFinite else { return "0:00" }
-        let m = Int(seconds) / 60
-        let s = Int(seconds) % 60
-        let f = Int((seconds - Double(Int(seconds))) * 10)
-        return String(format: "%d:%02d.%d", m, s, f)
-    }
 }

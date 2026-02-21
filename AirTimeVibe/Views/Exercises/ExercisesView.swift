@@ -142,7 +142,7 @@ struct ExercisesView: View {
 
 // MARK: - Filter Chip
 
-private struct FilterChip: View {
+struct FilterChip: View {
     let label: String
     var systemImage: String? = nil
     let isSelected: Bool

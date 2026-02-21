@@ -207,6 +207,7 @@ struct ExerciseEditorView: View {
                     // Link to routine if created from within one; skip for standalone library exercises.
                     if let r = routine {
                         r.exercises.append(newExercise)
+                        r.exerciseOrder.append(newExercise.uuid)
                     }
                 }
                 dismiss()

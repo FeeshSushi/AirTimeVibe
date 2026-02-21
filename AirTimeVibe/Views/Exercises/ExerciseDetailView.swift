@@ -47,7 +47,7 @@ struct ExerciseDetailView: View {
                     .transition(.opacity)
             }
 
-            // Layer 3: Bottom gradient scrim
+            // Layer 3: Gradient scrim
             VStack {
                 Spacer()
                 LinearGradient(
@@ -59,7 +59,7 @@ struct ExerciseDetailView: View {
             }
             .ignoresSafeArea()
 
-            // Layer 3: Floating controls (respects safe area)
+            // Layer 4: Floating controls (respects safe area)
             VStack(alignment: .leading) {
                 HStack {
                     Button { dismiss() } label: {
@@ -175,30 +175,5 @@ private struct SwipeBackEnabler: UIViewControllerRepresentable {
             vc.navigationController?.interactivePopGestureRecognizer?.isEnabled = true
             vc.navigationController?.interactivePopGestureRecognizer?.delegate = nil
         }
-    }
-}
-
-// MARK: - PlayerLayerView
-
-private struct PlayerLayerView: UIViewRepresentable {
-    let player: AVPlayer
-    var gravity: AVLayerVideoGravity = .resizeAspectFill
-
-    final class PlayerView: UIView {
-        override class var layerClass: AnyClass { AVPlayerLayer.self }
-        var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
-    }
-
-    func makeUIView(context: Context) -> PlayerView {
-        let view = PlayerView()
-        view.playerLayer.player = player
-        view.playerLayer.videoGravity = gravity
-        view.backgroundColor = .black
-        return view
-    }
-
-    func updateUIView(_ uiView: PlayerView, context: Context) {
-        uiView.playerLayer.player = player
-        uiView.playerLayer.videoGravity = gravity
     }
 }
